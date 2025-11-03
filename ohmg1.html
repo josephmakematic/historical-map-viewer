@@ -1,0 +1,513 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Historical Map Viewer - OpenHistoricalMap</title>
+    <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@3.6.1/dist/maplibre-gl.css"/>
+    <style>
+      html, body { 
+        height: 100%; 
+        margin: 0; 
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      }
+      #map { 
+        position: absolute; 
+        inset: 0; 
+      }
+      
+      .controls {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        background: #333f48; /* Charcoal background */
+        color: #ffffff;       /* White text */
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.2); /* Darker shadow */
+        z-index: 1000;
+        max-width: 320px;
+      }
+      
+      .controls h3 {
+        margin: 0 0 15px 0;
+        font-size: 16px;
+        color: #FF671F; /* Saffron/Orange heading */
+      }
+      
+      .date-input {
+        margin-bottom: 15px;
+      }
+      
+      .date-input label {
+        display: block;
+        margin-bottom: 5px;
+        font-size: 14px;
+        color: #f0f0f0; /* Off-white text */
+      }
+      
+      .date-input input {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #FF671F; /* Saffron/Orange border */
+        background: #4a555e;      /* Lighter charcoal for input */
+        color: #ffffff;           /* White text */
+        border-radius: 4px;
+        font-size: 14px;
+        box-sizing: border-box; 
+      }
+      
+      .button-group {
+        display: flex;
+        gap: 10px;
+        margin-top: 15px;
+      }
+      
+      button {
+        flex: 1;
+        padding: 10px;
+        background: #08a184; /* Green for main "Update Map" button */
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: background 0.3s;
+      }
+      
+      button:hover {
+        background: #45a049;
+      }
+      
+      /* === UPDATED STYLES START HERE === */
+      
+      button.secondary {
+        background: #FF671F; /* Saffron/Orange for PNG button */
+      }
+      
+      button.secondary:hover {
+        background: #E65C1A; /* Darker saffron */
+      }
+      
+      button.tertiary {
+        background: #FF671F; /* Saffron/Orange for SVG button */
+      }
+      
+      button.tertiary:hover {
+        background: #E65C1A; /* Darker saffron */
+      }
+      
+      /* === END OF UPDATED STYLES === */
+      
+      .current-date {
+        margin-top: 10px;
+        padding: 10px;
+        background: #4a555e; /* Lighter charcoal */
+        border-radius: 4px;
+        font-size: 13px;
+        color: #f0f0f0;    /* Off-white text */
+      }
+      
+      .export-options {
+        margin-top: 15px;
+        padding-top: 15px;
+        border-top: 1px solid #FF671F; /* Saffron/Orange separator */
+      }
+      
+       .export-options h4 {
+        margin: 0 0 10px 0; 
+        font-size: 14px;
+        color: #FF671F; /* Saffron/Orange heading */
+       }
+      
+      .resolution-select {
+        width: 100%;
+        padding: 8px;
+        margin-bottom: 10px;
+        border: 1px solid #FF671F; /* Saffron/Orange border */
+        background: #4a555e;      /* Lighter charcoal */
+        color: #ffffff;           /* White text */
+        border-radius: 4px;
+        font-size: 14px;
+        box-sizing: border-box; 
+      }
+      
+      .svg-options {
+        margin-top: 15px;
+      }
+      
+      .svg-options label {
+        display: block;
+        font-size: 12px;
+        color: #f0f0f0; /* Off-white text */
+        margin-bottom: 5px;
+      }
+      
+      .svg-instructions {
+        font-size: 11px;
+        color: #cccccc; /* Lighter gray for instructions */
+        margin-top: 5px;
+        line-height: 1.4;
+      }
+      
+      /* Loading spinner */
+      .loading {
+        display: none;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 2000;
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+      }
+      
+      .loading.active {
+        display: block;
+      }
+      
+      .spinner {
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid #3498db;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 10px;
+      }
+      
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="map"></div>
+    
+    <div class="controls">
+      <h3>Makematic Historical Map Viewer</h3>
+      
+      <div class="date-input">
+        <label for="date">Select Date:</label>
+        <input type="date" id="date" value="1939-09-01" min="1800-01-01" max="2024-12-31">
+      </div>
+      
+      <button onclick="updateMap()">Update Map</button>
+      
+      <div class="current-date">
+        Current view: <strong id="currentDate">September 1, 1939</strong>
+      </div>
+      
+      <div class="export-options">
+        <h4 style="margin: 0 0 10px 0; font-size: 14px;">Export Map</h4>
+        
+        <select class="resolution-select" id="resolution">
+          <option value="1">Current View (1x)</option>
+          <option value="2">High Resolution (2x)</option>
+          <option value="4">Very High Resolution (4x)</option>
+        </select>
+        
+        <div class="button-group">
+          <button class="secondary" onclick="exportPNG()">Export PNG</button>
+        </div>
+        
+        <div class="svg-options">
+          <label>SVG Vector Export:</label>
+          <div class="button-group">
+            <button class="tertiary" onclick="exportSVG()">Export Borders (SVG)</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="loading" id="loading">
+      <div class="spinner"></div>
+      <div>Exporting SVG...</div>
+    </div>
+
+    <script src="https://unpkg.com/maplibre-gl@3.6.1/dist/maplibre-gl.js"></script>
+    <script>
+      let map;
+      let currentDecimalDate = 1939 + (244 / 365); // September 1, 1939
+      
+      // Define fixed export settings
+      const exportBounds = new maplibregl.LngLatBounds(
+        [-180, -60], // Southwest corner [lng, lat]
+        [180, 85]    // Northeast corner [lng, lat]
+      );
+      
+      const exportWidth = 3000;
+      const exportHeight = 1650; // Adjusted for a good world map ratio
+
+      // Robust function to wait for the map to be idle
+      function waitForMapIdle() {
+        return new Promise(resolve => {
+          if (map.loaded() && map.areTilesLoaded()) {
+            resolve();
+          } else {
+            map.once('idle', resolve);
+          }
+        });
+      }
+
+      // Convert date to decimal year
+      function dateToDecimalYear(dateStr) {
+        const date = new Date(dateStr);
+        const year = date.getFullYear();
+        const start = new Date(year, 0, 1);
+        const diff = date - start;
+        const dayOfYear = Math.floor(diff / (1000 * 60 * 60 * 24)) + 1;
+        const daysInYear = ((year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0)) ? 366 : 365;
+        return year + (dayOfYear / daysInYear);
+      }
+      
+      // Format date for display
+      function formatDate(dateStr) {
+        const date = new Date(dateStr);
+        return date.toLocaleDateString('en-US', { 
+          year: 'numeric', 
+          month: 'long', 
+          day: 'numeric' 
+        });
+      }
+      
+      // Initialize map
+      function initMap() {
+        const style = {
+          version: 8,
+          sources: {
+            ohm: {
+              type: "vector",
+              tiles: ["https://vtiles.openhistoricalmap.org/maps/osm/{z}/{x}/{y}.pbf"],
+              attribution: "© OpenHistoricalMap contributors"
+            },
+            "carto-nolabels": {
+              type: "raster",
+              tiles: [
+                "https://a.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png",
+                "https://b.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png",
+                "https://c.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png"
+              ],
+              tileSize: 256,
+              attribution: "© CARTO"
+            }
+          },
+          layers: [
+            {
+              "id": "background",
+              "type": "background",
+              "paint": { "background-color": "#a8cceb" }
+            },
+            {
+              id: "base",
+              type: "raster",
+              source: "carto-nolabels",
+              paint: { "raster-opacity": 1 }
+            },
+            {
+              id: "borders",
+              type: "line",
+              source: "ohm",
+              "source-layer": "land_ohm_lines",
+              paint: { "line-color": "#222", "line-width": 2 }
+            }
+          ]
+        };
+        
+        map = new maplibregl.Map({
+          container: "map",
+          style,
+          center: [10, 30], 
+          zoom: 1.5,
+          preserveDrawingBuffer: true
+        });
+        
+        map.on("load", () => {
+          map.fitBounds(exportBounds, { padding: 20, duration: 0 });
+          applyDateFilter();
+        });
+      }
+      
+      // Apply date filter to borders
+      function applyDateFilter() {
+        const filter = [
+          "all",
+          ["<=", ["coalesce", ["get", "start_decdate"], -999999], currentDecimalDate],
+          ["any",
+            ["!", ["has", "end_decdate"]],
+            [">=", ["coalesce", ["get", "end_decdate"], 999999], currentDecimalDate]
+          ]
+        ];
+        
+        if (map.getLayer("borders")) map.setFilter("borders", filter);
+      }
+      
+      // Update map with new date
+      function updateMap() {
+        const dateInput = document.getElementById('date').value;
+        currentDecimalDate = dateToDecimalYear(dateInput);
+        document.getElementById('currentDate').textContent = formatDate(dateInput);
+        
+        if (map.loaded()) {
+          applyDateFilter();
+        }
+      }
+      
+      // Export as PNG
+      function exportPNG() {
+        const scale = parseInt(document.getElementById('resolution').value);
+        const canvas = map.getCanvas();
+        
+        const exportCanvas = document.createElement('canvas');
+        const width = canvas.width * scale;
+        const height = canvas.height * scale;
+        exportCanvas.width = width;
+        exportCanvas.height = height;
+        
+        const ctx = exportCanvas.getContext('2d');
+        ctx.scale(scale, scale);
+        ctx.drawImage(canvas, 0, 0);
+        
+        exportCanvas.toBlob(blob => {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `historical-map-${document.getElementById('date').value}.png`;
+          a.click();
+          URL.revokeObjectURL(url);
+        });
+      }
+
+      // Helper function to set loading state
+      function setLoading(isLoading) {
+        document.getElementById('loading').classList.toggle('active', isLoading);
+      }
+      
+      // *** RENAMED AND SIMPLIFIED SVG EXPORT ***
+      async function exportSVG() {
+        setLoading(true);
+        try {
+          await waitForMapIdle(); 
+          
+          const bounds = exportBounds;
+          const width = exportWidth;
+          const height = exportHeight;
+
+          // Query for BORDERS ONLY
+          // We query all rendered features, which at this zoom is the whole world
+          const features = map.queryRenderedFeatures({
+            layers: ['borders']
+          });
+          
+          const addedPaths = new Set();
+          const borderPaths = createSVGPathsFromFeatures(features, bounds, width, height, addedPaths);
+          const svg = assembleSVG(borderPaths, width, height);
+          
+          downloadSVG(svg, 'borders-only');
+
+        } catch (err) {
+            console.error("Error exporting SVG:", err);
+            alert("Error exporting SVG. Check the console for details.");
+        } finally {
+          setLoading(false);
+        }
+      }
+      
+      // *** REMOVED exportSVGDetailed() ***
+      
+      // *** REMOVED getTileBounds() ***
+
+      // *** Refactored function to ONLY return path strings ***
+      function createSVGPathsFromFeatures(features, bounds, width, height, addedPaths) {
+        const sw_pixels = map.project(bounds.getSouthWest());
+        const ne_pixels = map.project(bounds.getNorthEast());
+
+        const projectedWidth = ne_pixels.x - sw_pixels.x;
+        const projectedHeight = sw_pixels.y - ne_pixels.y;
+
+        const scaleX = width / projectedWidth;
+        const scaleY = height / projectedHeight;
+        const scale = Math.min(scaleX, scaleY);
+
+        const pxTop = ne_pixels.y;
+        const pxLeft = sw_pixels.x;
+
+        const offsetX = (width - (projectedWidth * scale)) / 2;
+        const offsetY = (height - (projectedHeight * scale)) / 2;
+
+        let borderLines = '';
+        
+        function createPathLine(line) {
+          return line.map((coord, i) => {
+            if (!coord || coord.length < 2) return '';
+            const px = map.project(coord);
+            const svgX = ((px.x - pxLeft) * scale) + offsetX;
+            const svgY = ((px.y - pxTop) * scale) + offsetY;
+            return `${i === 0 ? 'M' : 'L'}${svgX.toFixed(2)},${svgY.toFixed(2)}`;
+          }).join(' ');
+        }
+        
+        features.forEach(feature => {
+          const geom = feature.geometry;
+          const layerId = feature.layer.id;
+          
+          if (layerId === 'borders') { 
+            let paths = [];
+            if (geom.type === 'LineString') {
+              paths.push(createPathLine(geom.coordinates));
+            } else if (geom.type === 'MultiLineString') {
+              geom.coordinates.forEach(line => paths.push(createPathLine(line)));
+            }
+            
+            paths.forEach(pathData => { 
+              if (pathData && !addedPaths.has(pathData)) {
+                addedPaths.add(pathData);
+                borderLines += `<path d="${pathData}" />\n`;
+              }
+            });
+          }
+        });
+
+        return borderLines;
+      }
+      
+      // *** Helper to wrap paths in final SVG string ***
+      function assembleSVG(borderPaths, width, height) {
+        // *** THIS IS THE STROKE-WIDTH FIX ***
+        return `<?xml version="1.0" encoding="UTF-8"?>
+<svg width="${width}" height="${height}" 
+     xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 ${width} ${height}">
+  
+  <rect fill="#ffffff" width="${width}" height="${height}"/>
+  
+  <g id="borders" 
+     stroke="#222222" 
+     stroke-width="0.5" 
+     fill="none" 
+     stroke-linejoin="round" 
+     stroke-linecap="round"
+     vector-effect="non-scaling-stroke">
+    ${borderPaths}
+  </g>
+</svg>`;
+      }
+      
+      // Download SVG
+      function downloadSVG(svgContent, type) {
+        const blob = new Blob([svgContent], { type: 'image/svg+xml' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `historical-map-${document.getElementById('date').value}-${type}.svg`;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+      
+      // Initialize on load
+      initMap();
+    </script>
+  </body>
+</html>
