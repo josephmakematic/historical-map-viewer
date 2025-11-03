@@ -34,6 +34,14 @@
         color: #FF671F; /* Saffron/Orange heading */
       }
       
+      /* === NEW STYLE FOR MAIN INSTRUCTIONS === */
+      .instructions-main {
+        font-size: 13px;
+        color: #cccccc; /* Lighter gray, matches other instructions */
+        line-height: 1.4;
+        margin: -5px 0 15px 0; /* Sits nicely under the title */
+      }
+      
       .date-input {
         margin-bottom: 15px;
       }
@@ -188,6 +196,8 @@
     
     <div class="controls">
       <h3>Makematic Historical Map Viewer</h3>
+      
+      <p class="instructions-main">Enter the correct date, and then wait until the map is fully populated with national borders. This could take a minute.</p>
       
       <div class="date-input">
         <label for="date">Select Date:</label>
@@ -395,9 +405,13 @@
           const width = exportWidth;
           const height = exportHeight;
 
-          // Query for BORDERS ONLY
-          // We query all rendered features, which at this zoom is the whole world
-          const features = map.queryRenderedFeatures({
+          // Get the pixel coordinates of our fixed export bounds
+          const sw_pixels = map.project(bounds.getSouthWest());
+          const ne_pixels = map.project(bounds.getNorthEast());
+          const bbox = [ [sw_pixels.x, sw_pixels.y], [ne_pixels.x, ne_pixels.y] ];
+          
+          // Query for ALL borders in the box (no admin_level filter)
+          const features = map.queryRenderedFeatures(bbox, {
             layers: ['borders']
           });
           
@@ -414,10 +428,6 @@
           setLoading(false);
         }
       }
-      
-      // *** REMOVED exportSVGDetailed() ***
-      
-      // *** REMOVED getTileBounds() ***
 
       // *** Refactored function to ONLY return path strings ***
       function createSVGPathsFromFeatures(features, bounds, width, height, addedPaths) {
@@ -485,7 +495,7 @@
   
   <g id="borders" 
      stroke="#222222" 
-     stroke-width="0.5" 
+     stroke-width="" 
      fill="none" 
      stroke-linejoin="round" 
      stroke-linecap="round"
