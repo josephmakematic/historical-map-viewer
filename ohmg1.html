@@ -293,27 +293,26 @@
               tiles: ["https://vtiles.openhistoricalmap.org/maps/osm/{z}/{x}/{y}.pbf"],
               attribution: "© OpenHistoricalMap contributors"
             },
-            "carto-nolabels": {
+            // *** REPLACED CARTO WITH NATURAL EARTH (PUBLIC DOMAIN) ***
+            "natural-earth": {
               type: "raster",
               tiles: [
-                "https://a.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png",
-                "https://b.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png",
-                "https://c.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png"
+                "https://klokantech.github.io/naturalearthtiles/tiles/natural_earth_2_shaded_relief.raster/{z}/{x}/{y}.png"
               ],
               tileSize: 256,
-              attribution: "© CARTO"
+              attribution: "Natural Earth (Public Domain)" // Attribution is optional, but good practice
             }
           },
           layers: [
             {
               "id": "background",
               "type": "background",
-              "paint": { "background-color": "#a8cceb" }
+              "paint": { "background-color": "#a8cceb" } // This blue will show for deep oceans
             },
             {
               id: "base",
               type: "raster",
-              source: "carto-nolabels",
+              source: "natural-earth", // Point to the new source
               paint: { "raster-opacity": 1 }
             },
             {
