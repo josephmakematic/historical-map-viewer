@@ -342,8 +342,14 @@
 
         const sw = map.project(exportBounds.getSouthWest());
         const ne = map.project(exportBounds.getNorthEast());
-        const bbox = [[sw.x, sw.y], [ne.x, ne.y]];
 
+        const minX = Math.min(sw.x, ne.x);
+        const maxX = Math.max(sw.x, ne.x);
+        const minY = Math.min(sw.y, ne.y);
+        const maxY = Math.max(sw.y, ne.y);
+
+        const bbox = [[minX, minY], [maxX, maxY]];
+        
         const features = map.queryRenderedFeatures(bbox, { layers: ['borders'] });
 
         const foundLicenses = new Set();
@@ -558,7 +564,7 @@
 
   <g id="borders"
      stroke="#222222"
-     stroke-width=""
+     stroke-width="0.5"
      fill="none"
      stroke-linejoin="round"
      stroke-linecap="round"
